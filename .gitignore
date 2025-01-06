@@ -1,5 +1,5 @@
-# Class data
-/weeks/week_1/data/
+# ignore any folder named `data/` within folders named `week__` (* acts as a wildcard)
+/weeks/week_*/data/
 
 # History files
 .Rhistory
