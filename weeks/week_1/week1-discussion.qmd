@@ -1,0 +1,7 @@
+---
+title: "week1-discussion"
+author: "joshua paul cohen"
+format: html
+date: last-modified
+---
+

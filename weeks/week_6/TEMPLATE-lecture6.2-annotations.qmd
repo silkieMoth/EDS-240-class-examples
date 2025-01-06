@@ -1,0 +1,233 @@
+---
+title: "Lecture 6.2 TEMPLATE"
+subtitle: "Annotations"
+author: "Your Name"
+date: 2025-02-10
+toc: true
+---
+
+::: {.callout-note}
+This template follows [lecture 6.2 slides](https://eds-240-data-viz.github.io/course-materials/lecture-slides/lecture6.2-annotations-slides.html#/title-slide){target="_blank"}. Please be sure to cross-reference the slides, which contain important information and additional context!
+:::
+
+## Lobster plot
+
+### Setup
+
+```{r}
+#| eval: true
+#| echo: true
+#| warning: false
+#| message: false
+#.........................load libraries.........................
+library(tidyverse)
+
+#..........................read in data..........................
+
+# read in Google Sheet ----
+lobs <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1DkDVcl_9rlaqznHfa_v1V1jtZqcuL75Q6wvAHpnCHuk/edit#gid=2143433533") |>
+  mutate(temp = as.factor(temp))
+```
+
+### Create base plot
+
+```{r}
+#| eval: true
+#| echo: true
+#| warning: false
+#..........................create theme..........................
+lob_theme <- function(){
+  theme_light() +
+    theme(
+      axis.title.x = ggtext::element_markdown(size = 16,
+                                              lineheight = 1.5,
+                                              margin = margin(t = 10, r = 0, b = 0, l = 0)),
+      axis.title.y = ggtext::element_markdown(size = 16,
+                                              lineheight = 1.5,
+                                              margin = margin(t = 0, r = 10, b = 0, l = 0)),
+      axis.text = element_text(color = "black", 
+                               size = 14),
+      axis.ticks = element_line(color = "black"),
+      panel.border = element_rect(colour = "black", 
+                                  linewidth = 0.7),
+      panel.grid = element_blank(),
+      legend.title = element_text(size = 15),
+      legend.text = element_text(size = 13),
+      legend.position = c(0.95, 0.95),
+      legend.justification = c(0.95, 0.95),
+      legend.box.background = element_rect(linewidth = 0.9)
+    )
+}
+
+#..........................create scales.........................
+lob_palette <- c("11" = "#7B8698",
+                 "16" = "#BAD7E5",
+                 "21" = "#DC7E7C",
+                 "26" = "#7D3E40")
+
+lob_shapes <-  c("11" = 15,
+                 "16" = 16,
+                 "21" = 17,
+                 "26" = 18)
+
+lob_sizes <- c("11" = 6,
+               "16" = 6,
+               "21" = 6,
+               "26" = 7)
+
+#........................create plot text........................
+x_axis_lab <- glue::glue("Resting Metabolic Rate<br>
+                         (mg O<sub>2</sub> kg<sup>-1</sup> min<sup>-1</sup>)")
+
+y_axis_lab <- glue::glue("Maximum Consumption Rate<br>
+                         (prey consumed predator<sup>-1</sup> 24hr<sup>-1</sup>)")
+
+#............................plot data...........................
+lob_plot <- ggplot(lobs, aes(x = SMR, y = avg_eaten,
+                             color = temp, shape = temp, size = temp)) +
+  geom_point() +
+  scale_color_manual(values = lob_palette, name = "Temperature (ºC)") +
+  scale_shape_manual(values = lob_shapes, name = "Temperature (ºC)") +
+  scale_size_manual(values = lob_sizes, name = "Temperature (ºC)") +
+  scale_x_continuous(breaks = seq(0, 1.5, by = 0.2)) +
+  scale_y_continuous(breaks = seq(0, 35, by = 5)) +
+  labs(x = x_axis_lab,
+       y = y_axis_lab) +
+  lob_theme()
+
+lob_plot
+```
+
+### Adding annotations using `geom_text()` & `geom_rect()`
+
+- bounding box + text
+
+```{r}
+#| eval: true
+#| echo: true
+#| warning: false
+# create bounding box, text ----
+lob_plot + 
+```
+
+### Adding annotations using `annotate()`
+
+- bounding box + text + arrow
+
+```{r}
+#| eval: true
+#| echo: true
+#| warning: false
+# create bounding box, text, arrow ----
+lob_plot +
+```
+
+### Annotate each point
+
+```{r}
+#| eval: true
+#| echo: true
+# using geom_text() ----
+lob_plot +
+
+# using geom_label() ----
+lob_plot +
+  geom_label(aes(label = lobster_id),
+             size = 6,
+             show.legend = FALSE)
+
+# using ggrepel (text) ----
+lob_plot +
+  
+# using ggrepel (labels) ----
+lob_plot +
+  ggrepel::geom_label_repel(aes(label = lobster_id),
+                           size = 4,
+                           color = "gray10",
+                           nudge_x = 0.1, nudge_y = 0.3,
+                           arrow = arrow(length = unit(0.25, "cm")))
+```
+
+### Use `annotate()` to label a few points
+
+- ID + arrow
+
+```{r}
+#| eval: true
+#| echo: true
+# label 2 points with lobster ID & arrow ----
+lob_plot +
+```
+
+## Mono Lake plot
+
+### Setup
+
+```{r}
+#| eval: true
+#| echo: true
+#| message: false
+#..........................read in data..........................
+
+# read in Google Sheet ----
+mono <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1o0-89RFp2rI2y8hMQWy-kquf_VIzidmhmVDXQ02JjCA/edit#gid=164128885")
+```
+
+### Create base plot 
+
+```{r}
+#| eval: true
+#| echo: true
+# create base plot ----
+ggplot(data = mono, aes(x = year, y = lake_level)) +
+  geom_line() +
+  labs(x = "\nYear",
+       y = "Lake surface level\n(feet above sea level)\n",
+       title = "Mono Lake levels (1850 - 2017)\n",
+       caption = "Data: Mono Basin Clearinghouse") +
+  scale_x_continuous(limits = c(1850, 2020),
+                     expand = c(0,0),
+                     breaks = seq(1850, 2010, by = 20)) +
+  scale_y_continuous(limits = c(6350, 6440),
+                     breaks = c(6370, 6400, 6430),
+                     expand = c(0,0),
+                     labels = scales::label_comma()) +
+  theme_light() +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(size = 16),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    plot.caption = element_text(face = "italic")
+    )
+```
+
+### Add annotations
+
+- order of annotation layers matters!
+
+```{r}
+#| eval: true
+#| echo: true
+ggplot(data = mono, aes(x = year, y = lake_level)) +
+  geom_line() +
+  labs(x = "\nYear",
+       y = "Lake surface level\n(feet above sea level)\n",
+       title = "Mono Lake levels (1850 - 2017)\n",
+       caption = "Data: Mono Basin Clearinghouse") +
+  scale_x_continuous(limits = c(1850, 2020),
+                     expand = c(0,0),
+                     breaks = seq(1850, 2010, by = 20)) +
+  scale_y_continuous(limits = c(6350, 6440),
+                     breaks = c(6370, 6400, 6430),
+                     expand = c(0,0),
+                     labels = scales::label_comma()) +
+  theme_light() +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(size = 16),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    plot.caption = element_text(face = "italic")
+    )
+```
