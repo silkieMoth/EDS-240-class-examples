@@ -12,6 +12,9 @@ This template follows [lecture 2.2 slides](https://eds-240-data-viz.github.io/co
 
 ## Setup
 
+- Find data & metadata on the [EDI Data Portal](https://portal.edirepository.org/nis/mapbrowse?scope=knb-lter-sbc&identifier=2007). 
+- Get data download link by right-clicking on the **Download** button > **Copy Link Address** > then paste into `read_csv()`
+
 ```{r}
 #| eval: true
 #| echo: true
@@ -26,6 +29,11 @@ This template follows [lecture 2.2 slides](https://eds-240-data-viz.github.io/co
 library(tidyverse)
 library(chron)
 library(naniar)
+library(ggridges)
+library(gghighlight)
+library(ggbeeswarm)
+library(see)
+library(palmerpenguins) # for some minimal examples
 
 #..........................import data...........................
 mko <- read_csv("https://portal.edirepository.org/nis/dataviewer?packageid=knb-lter-sbc.2007.17&entityid=02629ecc08a536972dec021f662428aa")
@@ -44,14 +52,14 @@ mko_clean <- mko |>
   mutate(time = chron::times(decimal_time)) |>
   unite(date_time, date, time, sep = " ") |>
 
-  # coerce data types (see https://www.neonscience.org/resources/learning-hub/tutorials/dc-convert-date-time-posix-r for overview of POSIXct vs POSIXlt) ----
-  mutate(date_time = as.POSIXct(date_time, "%Y-%m-%d %H:%M:%S", tz = "GMT"), 
+  # coerce data types ----
+  mutate(date_time = as_datetime(date_time, "%Y-%m-%d %H:%M:%S", tz = "GMT"), 
          year = as.factor(year),
          month = as.factor(month),
          day = as.numeric(day)) |>
 
   # add month name by indexing the built-in `month.name` vector ----
-  mutate(month_name = as.factor(month.name[month])) |>
+  mutate(month_name = month.name[month]) |> 
 
   # replace 9999s with NAs ----
   naniar::replace_with_na(replace = list(Temp_bot = 9999, 
@@ -89,6 +97,10 @@ missing_temps <- naniar::vis_miss(bottom)
 #| echo: true
 
 # histogram with all 12 months ----
+mko_clean |>
+  mutate(month_name = factor(month_name, levels = month.name)) %>% 
+  ggplot(aes(x = Temp_bot, fill = month_name)) + 
+  geom_histogram(position = 'identity', alpha = 0.5)
 ```
 
 ### Alt 1: small multiples
@@ -100,6 +112,11 @@ missing_temps <- naniar::vis_miss(bottom)
 #| message: false
 
 # histogram faceted by month ----
+mko_clean |> 
+  mutate(month_name = factor(month_name, levels = month.name)) |> 
+  ggplot(aes(x = Temp_bot)) + 
+  geom_histogram() + 
+  facet_wrap(vars(month_name))
 ```
 
 ### Alt 2: fewer groups + update colors + modify bin widths
@@ -109,14 +126,18 @@ missing_temps <- naniar::vis_miss(bottom)
 #| echo: true
 #| warning: false
 
-# histogram with fewer months ----
+# histogram with fewer months; use these colors: c("#2C5374", "#ADD8E6", "#8B3A3A") ----
 mko_clean |> 
-  mutate(month_name = factor(month_name, levels = month.name))
+  mutate(month_name = factor(month_name, levels = month.name)) |> 
+  filter(month_name %in% c('April', 'June', 'October')) %>% 
+  ggplot(aes(x = Temp_bot, fill = month_name)) +
+  geom_histogram(position = "identity", alpha = 0.5) + 
+  scale_fill_manual(values = c("#2C5374", "#ADD8E6", "#8B3A3A"))
 ```
 
 ## Density plots
 
-- represent data distribution of a numeric variable(s); uses KDE to show probability density function of the variable; where the area under the curve is equal to 1
+- represent data distribution of a numeric variable(s); uses KDE to show probability density function of the variable, the y-axis represents the estimated density, i.e. the relative likelihood of a value occurring, and the area under each curve is equal to 1
 
 ### Too many groups
 
@@ -127,7 +148,9 @@ mko_clean |>
 
 # density plot with all 12 months ----
 mko_clean |> 
-  mutate(month_name = factor(x = month_name, levels = month.name)) 
+  mutate(month_name = factor(x = month_name, levels = month.name)) |> 
+  ggplot(aes(x = Temp_bot, fill = month_name)) +
+  geom_density(alpha = 0.5)
 ```
 
 ### Alt 1: small multiples
@@ -141,7 +164,8 @@ mko_clean |>
 mko_clean |> 
   mutate(month_name = factor(month_name, levels = month.name)) |> 
   ggplot(aes(x = Temp_bot)) +
-  geom_density() 
+  geom_density(fill = "gray30") +
+  facet_wrap(~month_name)
 ```
 
 ### Alt 2: fewer groups + update colors + modify band widths
@@ -154,8 +178,9 @@ mko_clean |>
 # density plot with fewer months ----
 mko_clean |> 
   filter(month_name %in% c("April", "June", "October")) |> 
-  ggplot(aes(x = Temp_bot)) +
-  geom_density() 
+  ggplot(aes(x = Temp_bot, fill = month_name)) +
+  geom_density(alpha = 0.5, adjust = 0.5) + 
+  scale_fill_manual(values = c("#2C5374", "#ADD8E6", "#8B3A3A"))
 ```
 
 ## A few more histograms & density plots
@@ -195,6 +220,9 @@ ggplot(dummy_data, aes(x = value, fill = group)) +
 #| message: false
 
 # histogram + density plot ----
+ggplot(mko_clean, aes(x = Temp_bot, y = after_stat(density))) + # scale down hist to match density curve
+  geom_histogram(fill = "gray", color = "black", alpha = 0.75) +
+  geom_density(size = 1) 
 ```
 
 ### Compare groups to a whole
@@ -203,8 +231,6 @@ ggplot(dummy_data, aes(x = value, fill = group)) +
 #| eval: true
 #| echo: true
 #| warning: false
-library(palmerpenguins)
-
 # use `after_stat(count)` to plot density of observations ----
 ggplot(penguins, aes(x = body_mass_g, y = after_stat(count))) +
  
@@ -219,7 +245,7 @@ ggplot(penguins, aes(x = body_mass_g, y = after_stat(count))) +
   facet_wrap(~species, nrow = 1) +
   
   # update colors, x-axis label, legend position ----
-  scale_fill_manual(values = c("grey","#0C8346"), name = NULL) +
+  scale_fill_manual(values = c("grey","green4"), name = NULL) +
   labs(x = "Body Mass (g)") +
   theme(legend.position = "top")
 ```
@@ -237,8 +263,10 @@ ggplot(penguins, aes(x = body_mass_g, y = after_stat(count))) +
 
 # basic ridgeline plot ----
 
-# fill with color gradient ----
-
+# fill with color gradient; use these colors: c("#2C5374","#849BB4", "#D9E7EC", "#EF8080", "#8B3A3A") ----
+ggplot(mko_clean, aes(x = Temp_bot, y = month_name)) + 
+  geom_density_ridges_gradient() + 
+  scale_fill_gradientn(colors = c("#2C5374","#849BB4", "#D9E7EC", "#EF8080", "#8B3A3A"))
 ```
 
 ### Alt 1: reorder groups + adjust overlap & tails
@@ -251,7 +279,33 @@ ggplot(penguins, aes(x = body_mass_g, y = after_stat(count))) +
 
 # ridgeline plot with reordered months ----
 ggplot(mko_clean, aes(x = Temp_bot, y = month_name, fill = after_stat(x))) +
-  ggridges::geom_density_ridges_gradient() +
+  geom_density_ridges_gradient(rel_min_height = 0.01, scale = 3) +
+  scale_y_discrete(limits = rev(month.name)) +
+  scale_fill_gradientn(colors = c("#2C5374","#849BB4", "#D9E7EC", "#EF8080", "#8B3A3A"))
+```
+
+Remember, you can also reorder factor levels during the data wrangling stage:
+
+```{r}
+#| eval: true
+#| echo: true
+#| warning: false
+#| message: false
+#| layout-ncol: 2
+
+# check the key for this one
+
+
+# e.g. by month: ----
+mko_clean |> 
+  ggplot(aes(x = Temp_bot, y = month_name, fill = after_stat(x))) +
+  ggridges::geom_density_ridges_gradient(rel_min_height = 0.01, scale = 3) +
+  scale_fill_gradientn(colors = c("#2C5374","#849BB4", "#D9E7EC", "#EF8080", "#8B3A3A"))
+
+# e.g. by median temp ---
+mko_clean |> 
+  ggplot(aes(x = Temp_bot, y = month_name, fill = after_stat(x))) +
+  ggridges::geom_density_ridges_gradient(rel_min_height = 0.01, scale = 3) +
   scale_fill_gradientn(colors = c("#2C5374","#849BB4", "#D9E7EC", "#EF8080", "#8B3A3A"))
 ```
 
@@ -276,9 +330,7 @@ ggplot(mko_clean, aes(x = Temp_bot, y = month_name))
 #| warning: false
 #| message: false
 
-# jittered points ----
-
-# raincloud ----
+# jittered points (and raincloud option) ----
 
 ```
 
@@ -292,9 +344,9 @@ ggplot(mko_clean, aes(x = Temp_bot, y = month_name))
 #| warning: false
 
 # boxplot with all 12 months ----
-ggplot(mko_clean, aes(x = month_name, y = Temp_bot)) +
-  geom_boxplot() +
-  scale_x_discrete(limits = rev(month.name)) +
+ggplot(mko_clean, aes(x = month_name, y = Temp_bot)) + 
+  geom_boxplot() + 
+  scale_x_discrete(limits = rev(month.name)) + 
   coord_flip()
 ```
 
@@ -306,6 +358,12 @@ ggplot(mko_clean, aes(x = month_name, y = Temp_bot)) +
 #| warning: false
 
 # boxplot with modified outliers ----
+ggplot(mko_clean, aes(x = month_name, y = Temp_bot, fill = month_name)) +
+  geom_boxplot() +
+  scale_x_discrete(limits = rev(month.name)) +
+  gghighlight(month_name == 'October') +
+  coord_flip() + 
+  theme(legend.position = 'none')
 ```
 
 ### Alt 2: hightlight a group
@@ -316,6 +374,10 @@ ggplot(mko_clean, aes(x = month_name, y = Temp_bot)) +
 #| warning: false
 
 # highlight a particular group ----
+ggplot(mko_clean, aes(x = month_name, y = Temp_bot)) +
+  geom_boxplot() +
+  scale_x_discrete(limits = rev(month.name)) + 
+  coord_flip()
 ```
 
 ### Alt 3: jitter raw data (using `{palmerpenguins}` data) 
@@ -326,6 +388,8 @@ ggplot(mko_clean, aes(x = month_name, y = Temp_bot)) +
 #| warning: false
 
 # add jittered data points ----
+ggplot(penguins, aes(x = species, y = body_mass_g)) +
+  geom_boxplot()
 ```
 
 ### Alt 4: dodged groups
@@ -336,6 +400,8 @@ ggplot(mko_clean, aes(x = month_name, y = Temp_bot)) +
 #| warning: false
 
 # dodge groups by year ----
+ggplot(penguins, aes(x = species, y = body_mass_g)) +
+  geom_boxplot(outlier.shape = NA) 
 ```
 
 ### Alt 5: overlay beeswarm
@@ -346,9 +412,8 @@ ggplot(mko_clean, aes(x = month_name, y = Temp_bot)) +
 #| warning: false
 
 # boxplot + beeswarm ----
-ggplot(na.omit(penguins), aes(x = species, y = body_mass_g)) +
-  geom_boxplot() +
-  coord_flip() 
+ggplot(penguins, aes(x = species, y = body_mass_g)) +
+  geom_boxplot(outlier.shape = NA) 
 ```
 
 ## Violin plots
@@ -361,7 +426,10 @@ ggplot(na.omit(penguins), aes(x = species, y = body_mass_g)) +
 #| warning: false
 
 # violin plot ----
-ggplot(mko_clean, aes(x = month_name, y = Temp_bot))
+ggplot(mko_clean, aes(x = month_name, y = Temp_bot)) + 
+  geom_violin() + 
+  geom_boxplot(width = 0.1, color = 'grey') + 
+  theme_classic()
 ```
 
 ### Alt 1: overlay boxplot
@@ -372,7 +440,10 @@ ggplot(mko_clean, aes(x = month_name, y = Temp_bot))
 #| warning: false
 
 # violin + boxplot ----
-# ~ copy code from previous chunk ~
+ggplot(mko_clean, aes(x = month_name, y = Temp_bot)) +
+  geom_violin() +
+  scale_x_discrete(limits = rev(month.name)) +
+  coord_flip()
 ```
 
 ### Alt 2: half-violin half-dot plot

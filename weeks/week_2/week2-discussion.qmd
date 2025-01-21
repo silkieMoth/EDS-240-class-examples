@@ -63,5 +63,24 @@ drought_clean |>
          state_abb == "CA") |> 
   
   # pipe into ggplot here!
+  ggplot(aes(x = date, y = area_pct, fill = as.factor(drought_lvl_long))) + 
+  
+  # reversed the order of groups so level D4 is closest to the x axis
+  geom_area(position = position_stack(reverse = TRUE)) + 
+  
+  # update colors to match the US Drought Monitor
+  scale_fill_manual(values = c('#853904', '#FF0000', '#FFC100', '#FFD965', '#FFFF00')) + 
+  
+  # set x-axis breaks & remove padding between data and x axis
+  scale_x_date(breaks = scales::breaks_pretty(n = 10), expand = c(0, NA)) + 
+  
+  # make y axis percent with interval of 10
+  scale_y_continuous(breaks = scales::breaks_pretty(n = 10), 
+                     labels = scales::label_percent(scale = 1), 
+                     expand = c(0, NA)) + 
+  
+  labs(title = 'Drought area in California') + 
+  
+  theme(legend.position = 'none')
 ```
 

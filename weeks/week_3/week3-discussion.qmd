@@ -1,0 +1,6 @@
+---
+title: "week_3_discussion"
+author: "Joshua Paul Cohen"
+format: html
+date: last-modified
+---
